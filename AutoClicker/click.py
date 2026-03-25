@@ -1,0 +1,94 @@
+import tkinter as tk
+import platform
+import ctypes
+import ctypes.wintypes
+
+class AutoClicker:
+    def __init__(self):
+        if platform.system() != "Windows":
+            raise OSError("This script is Windows-only.")
+
+        self.clicking = False
+        self.click_count = 0
+        self.start_pos = None
+        self.countdown_value = 0
+        self.flash_on = False
+
+        self.root = tk.Tk()
+        self.root.title("Auto Clicker")
+        self.root.attributes('-topmost', True)
+        self.root.geometry("240x210")
+
+        self.label = tk.Label(self.root, text="Ready", font=("Arial", 16))
+        self.label.pack(pady=10)
+
+        self.counter = tk.Label(self.root, text="Clicks: 0", font=("Arial", 12))
+        self.counter.pack()
+
+        self.btn = tk.Button(self.root, text="Start", command=self.start_countdown,
+                            width=15, height=2, font=("Arial", 12))
+        self.btn.pack(pady=10)
+
+        self.interval = tk.Scale(self.root, from_=50, to=5000, orient="horizontal",
+                                 label="Click interval (ms)")
+        self.interval.set(2000)
+        self.interval.pack()
+
+        self.root.mainloop()
+
+    def get_mouse_pos(self):
+        pt = ctypes.wintypes.POINT()
+        ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
+        return pt.x, pt.y
+
+    def click(self):
+        ctypes.windll.user32.mouse_event(0x0002, 0, 0, 0, 0)
+        ctypes.windll.user32.mouse_event(0x0004, 0, 0, 0, 0)
+
+    def start_countdown(self):
+        if self.clicking:
+            return
+
+        self.btn.config(state="disabled")
+        self.click_count = 0
+        self.counter.config(text="Clicks: 0")
+        self.countdown_value = 5
+        self.run_countdown()
+
+    def run_countdown(self):
+        if self.countdown_value > 0:
+            self.label.config(text=f"Starting in {self.countdown_value}...", bg="yellow")
+            self.countdown_value -= 1
+            self.root.after(1000, self.run_countdown)
+            return
+
+        self.clicking = True
+        self.start_pos = self.get_mouse_pos()
+        self.click_loop()
+
+    def click_loop(self):
+        if not self.clicking:
+            return
+
+        current_pos = self.get_mouse_pos()
+        if abs(current_pos[0] - self.start_pos[0]) > 10 or abs(current_pos[1] - self.start_pos[1]) > 10:
+            self.stop_clicking()
+            return
+
+        self.click()
+        self.click_count += 1
+
+        self.flash_on = not self.flash_on
+        color = "green" if self.flash_on else "lime"
+        self.label.config(text="CLICKING", bg=color)
+        self.counter.config(text=f"Clicks: {self.click_count}")
+
+        self.root.after(self.interval.get(), self.click_loop)
+
+    def stop_clicking(self):
+        self.clicking = False
+        self.label.config(text="Stopped", bg="red")
+        self.btn.config(state="normal")
+
+if __name__ == "__main__":
+    AutoClicker()
